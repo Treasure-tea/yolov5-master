@@ -1,0 +1,44 @@
+train: ZJUTfood/images/train  # train images (relative to 'path') 128 images
+val: ZJUTfood/images/train  # val images (relative to 'path') 128 images
+test:  # test images (optional)
+
+# Classes
+nc: 32  # number of classes
+names: [
+        'Scrambled eggs with loofah',
+        'Braised pork',
+        'pork chop',
+        'Stir-fried dried tofu with sauerkraut',
+        'Braised fish',
+        'Winter melon stewed ribs',
+        'Sautéed mushrooms with ham',
+        'Sauté dried tofu',
+        'Carrot stir-fried meat',
+        'Egg cake',
+        'Sautéed cauliflower',
+        'Scrambled eggs with tofu',
+        'Stir-fry vermicelli',
+        'Mao Xue Wang',
+        'Potato stir-fried meat',
+        'Soy sauce tofu',
+        'Stir-fried bamboo shoot slices',
+        'Scrambled eggs with tomatoes',
+        'Scrambled eggs with squeezed vegetables',
+        'Winter melon stewed fish balls',
+        'White chopped chicken',
+        'Chicken stew with mushrooms',
+        'Sauce duck',
+        'Stir-fried lotus slices',
+        'Stir-fried Japanese tofu with tomatoes',
+        'Pea stewed tofu',
+        'Stir-fried mushrooms with sauerkraut',
+        'Fried potatoes',
+        'Sauté potato chips',
+        'Peas fried pork hearts',
+        'Potato curry',
+        'rice'
+]  # class names
+
+
+# Download script/URL (optional)
+
