@@ -1,3 +1,5 @@
+
+import random
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMenu, QAction
 from main_win.win import Ui_mainWindow
 from PyQt5.QtCore import Qt, QPoint, QTimer, QThread, pyqtSignal
@@ -23,6 +25,58 @@ from utils.plots import colors, Annotator, plot_one_box, plot_one_box_PIL
 from utils.torch_utils import select_device, load_classifier, time_sync
 from utils.capnums import Camera
 from dialog.rtsp_win import Window
+
+
+#定义一个字典 进行误差修正
+food_fixed = {
+    'Marinated cold cucumber':'scrambled eggs with loofah',
+    'Duck neck':'braised pork',
+    'Fried and stewed hairtail in soy sauce':'pork chop',
+    'Saut茅ed Sliced Pork, Eggs and Black Fungus':'stir-fried dried tofu with sauerkraut',
+    'Beef Seasoned with Soy Sauce':'braised fish',
+    'Saut茅ed Shrimps with Celery':'sauteed mushrooms with ham',
+    'Steamed Dazha Crabs':'carrot stir-fried meat',
+    'Fried Baked Scallion Pancake':'egg cake',
+    'Stir-fried Spinach':'sauteed cauliflower',
+    'Scrambled Egg with green pepper':'scrambled eggs with tofu',
+    'Yu-Shiang Shredded Pork':'Mao Xue Wang pork',
+    'Hot and dry noodle':'stir-fry vermicelli',
+    'Millet congee':'Rice',
+    'Saut茅ed Sweet Corn with Pine Nuts':'rice',
+    'Deep Fried lotus root':'eggs cake',
+    'Braised beef with brown sauce':'scrambled eggs with tomatoes',
+    'Fried green peppers':'stir-fried bamboo shoot slices',
+    'Yangzhou fried rice':'rice',
+    'Stewed chicken with mushroom':'Mao Xue Wang pork',
+    'Fried Lamb with Cumin':'Saute dried tofu',
+    'Saut茅ed Sour Beans with Minced Pork':'Scrambled eggs with squeezed vegetables',
+    'Pork Ribs and lotus root soup':'Winter melon stewed fish balls',
+    'Tremella and red dates soup':'Winter melon stewed fish balls',
+    'Braised Tofu':'Winter melon stewed fish balls',
+    'Saut茅ed pork with mushrooms':'White chopped chicken',
+    'Sweet mung bean soup':'rice'
+}
+
+#七大营养素：蛋白质、脂肪、碳水化合物、无机盐、维生素、纤维素、水
+yingyang_dic = {
+    'danbaizhi': 0,
+    'tanshui':0,
+    'weishengsu':0,
+    'shui':0
+}
+
+
+danbaizhi = ['蛋白质摄入充足,\n','蛋白质补充充足,\n','补充了充足的蛋白质,\n','蛋白质摄入较多,\n','蛋白质摄入达到要求,\n','补充了一定的蛋白质,\n']
+danbaizhi_0 = '蛋白质'
+tanshui = ['保证了一定量的碳水摄入,\n','碳水化合物补充充足,\n','主食较丰富,\n','碳水摄入达到要求,\n']
+tanshui_0 = '碳水化合物'
+weishengsu = ['补充了一定量的维生素,\n','维生素补充达到要求,\n','保证了每日必须的维生素摄入,\n','摄入了一定量的维生素,\n']
+weishengsu_0 = '维生素'
+shui = ['补充了水分,\n']
+shui_0 = '水分'
+
+
+
 
 
 class DetThread(QThread):
@@ -208,6 +262,7 @@ class DetThread(QThread):
                         percent = self.percent_length
 
                     statistic_dic = {name: 0 for name in names}
+                    #print(statistic_dic)
                     img = torch.from_numpy(img).to(device)
                     img = img.half() if half else img.float()  # uint8 to fp16/32
                     img /= 255.0  # 0 - 255 to 0.0 - 1.0
@@ -230,10 +285,22 @@ class DetThread(QThread):
                             # Write results#此处循环画框
                             for *xyxy, conf, cls in reversed(det):
                                 c = int(cls)  # integer class
-                                statistic_dic[names[c]] += 1
-                                label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
-                                print(label)
-                                print(type(label))
+                                #name fixed
+                                if names[c] in food_fixed.keys():
+                                    #print('tiaoguo')
+                                    fixed_name = food_fixed.get(names[c])
+                                    statistic_dic.pop(names[c])
+                                    statistic_dic[fixed_name] = 0
+                                    statistic_dic[fixed_name] += 1
+                                    #label = fixed_name
+                                    label = None if hide_labels else (fixed_name if hide_conf else f'{fixed_name} {conf:.2f}')
+                                else:
+                                    statistic_dic[names[c]] += 1
+                                    label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
+                                    print(label)
+                                    print(type(label))
+
+
                                 #im0 = plot_one_box_PIL(xyxy, im0, label=label, color=colors(c, True), line_thickness=line_thickness)  # 中文标签画框，但是耗时会增加
                                 plot_one_box(xyxy, im0, label=label, color=colors(c, True),
                                              line_thickness=self.line_thickness)
@@ -568,7 +635,57 @@ class MainWindow(QMainWindow, Ui_mainWindow):
             statistic_dic = sorted(statistic_dic.items(), key=lambda x: x[1], reverse=True)
             statistic_dic = [i for i in statistic_dic if i[1] > 0]
             results = [' '+str(i[0]) + '：' + str(i[1]) for i in statistic_dic]
-            results.append('营养分析:吃的比美国中产好')
+
+            #results.append('\n')
+            yingyangjiance = ''
+            danbaizhi_flag = ['eggs' , 'pork' , 'tofu' , 'fish' , 'ham' , 'meat' , 'chicken']
+            weishengsu_flag = ['loofah' , 'sauerkraut' , 'mushrooms' , 'carrot' , 'cauliflower',\
+                     'vermicelli' , 'tomatoes' ,'bamboo', 'vegetables' , 'melon']
+            tanshui_flag = ['rice' , 'Rice']
+            shui_flag = ['soup']
+
+            _yingyang_dic = yingyang_dic.copy()
+            for food in statistic_dic:
+                for j in danbaizhi_flag:
+                    if (j in food[0] ) and _yingyang_dic['danbaizhi']==0 :
+                        _yingyang_dic['danbaizhi'] += 1
+                        yingyangjiance = yingyangjiance + random.choice(danbaizhi)
+                for j in weishengsu_flag:
+                    if (j in food[0] ) and _yingyang_dic['weishengsu']==0:
+                        _yingyang_dic['weishengsu'] += 1
+                        yingyangjiance = yingyangjiance + random.choice(weishengsu)
+                for j in shui_flag:
+                    if (j in food[0] )and _yingyang_dic['shui']==0:
+                        _yingyang_dic['shui'] += 1
+                        yingyangjiance = yingyangjiance + random.choice(shui)
+                for j in tanshui_flag:
+                    if (j in food[0] ) and _yingyang_dic['tanshui']==0:
+                        _yingyang_dic['tanshui'] += 1
+                        yingyangjiance = yingyangjiance + random.choice(tanshui)
+            queshao = '缺少'
+            zongti_flag = 1  # 1是均衡，0是不均衡
+            if _yingyang_dic['danbaizhi'] == 0:
+                queshao = queshao + danbaizhi_0 + ','
+                zongti_flag = 0
+            if _yingyang_dic['weishengsu'] == 0:
+                queshao = queshao + weishengsu_0 + ','
+                zongti_flag = 0
+            if _yingyang_dic['tanshui'] == 0:
+                queshao = queshao + tanshui_0 + ','
+                zongti_flag = 0
+            if _yingyang_dic['shui'] == 0:
+                queshao = queshao + shui_0 + ','
+                #zongti_flag = 0
+
+            if zongti_flag == 0:
+                yingyangjiance = '营养分析:\n' + yingyangjiance + queshao +'\n' + '总体来看，饮食结构欠平衡'
+                results.append(yingyangjiance)
+            else:
+                yingyangjiance = '营养分析:\n' + yingyangjiance + '总体来看，饮食结构较平衡'
+                results.append(yingyangjiance)
+
+
+            # results.append('营养分析:吃的比美\n国中产好')
             self.resultWidget.addItems(results)
             #以下来加入营养分析
             #self.resultWidget.addItems("营养分析：")
